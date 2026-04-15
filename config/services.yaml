@@ -1,0 +1,16 @@
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: true
+
+    App\:
+        resource: '../src/'
+        exclude:
+            - '../src/Kernel.php'
+
+    App\Coupe\Reglement\ReglementCoupeRegistry:
+        arguments:
+            $reglements:
+                N1: '@App\Coupe\Reglement\ReglementN1'
+                N2: '@App\Coupe\Reglement\ReglementN2'
+                N3: '@App\Coupe\Reglement\ReglementN3'

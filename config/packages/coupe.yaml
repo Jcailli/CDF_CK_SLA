@@ -1,0 +1,7 @@
+# Liste des circuits et libellés pour le sélecteur (modulable)
+parameters:
+    coupe.circuits: ['N1', 'N2', 'N3']
+    coupe.circuits_labels:
+        N1: 'Coupe de France N1'
+        N2: 'Coupe de France N2'
+        N3: 'Coupe de France N3'

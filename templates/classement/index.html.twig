@@ -1,0 +1,137 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Coupe de France {{ circuit }} – Classement slalom{% endblock %}
+
+{% block body %}
+    <h1>Coupe de France {{ circuit }}</h1>
+    <p class="sub">Classement slalom – mis à jour selon les résultats en base</p>
+
+    <form method="get" action="{{ path('app_classement') }}">
+        <label for="circuit">Circuit :</label>
+        <select name="circuit" id="circuit">
+            {% for c in circuits %}
+                <option value="{{ c }}" {{ circuit == c ? 'selected' : '' }}>{{ c }}</option>
+            {% endfor %}
+        </select>
+        <label for="annee">Saison :</label>
+        <select name="annee" id="annee">
+            {% set yMax = date()|date('Y') + 1 %}
+            {% for y in range(yMax, 2020, -1) %}
+                <option value="{{ y }}" {{ annee == y ? 'selected' : '' }}>{{ y }}</option>
+            {% endfor %}
+        </select>
+        <button type="submit">Actualiser</button>
+    </form>
+
+    <p class="sub" style="margin-top: 0; margin-bottom: 0.35rem;">Exports PDF (portrait, circuit et saison ci-dessus)</p>
+    <div class="export-buttons" role="group" aria-label="Exporter le classement par catégorie en PDF">
+        {% for cat in ['K1D', 'K1H', 'C1D', 'C1H'] %}
+            <a class="btn btn-sm" href="{{ path('app_classement_export_pdf_categorie', { categorie: cat, circuit: circuit, annee: annee }) }}">{{ cat }}</a>
+        {% endfor %}
+    </div>
+
+    <p><a href="{{ path('app_classement_debug', { circuit: circuit, annee: annee }) }}">Voir le détail de calcul (debug)</a></p>
+
+    {% if data.erreur %}
+        <p class="erreur">{{ data.erreur }}</p>
+    {% else %}
+        <div class="card">
+            <h2>Compétitions prises en compte ({{ data.competitions|length }})</h2>
+            {% set nbFinales = 0 %}
+            {% for c in data.competitions %}
+                {% if c.is_finale %}
+                    {% set nbFinales = nbFinales + 1 %}
+                {% endif %}
+            {% endfor %}
+            {% set nbManches = data.competitions|length - nbFinales %}
+            <p class="muted">{{ nbManches }} manche(s){% if nbFinales > 0 %} + {{ nbFinales }} finale(s){% endif %}</p>
+            <ul class="compet-list">
+                {% for c in data.competitions %}
+                    <li>
+                        {{ c.Nom|e }}
+                        <span class="muted"> – {{ c.Date_debut }}</span>
+                        {% if c.is_finale %}<span class="finale"> [Finale]</span>{% endif %}
+                    </li>
+                {% endfor %}
+            </ul>
+        </div>
+
+        {% if circuit == 'N3' and data.n3_qualification.active|default(false) %}
+            <p class="muted n3-qualif-legend">
+                Manches interrégionales : {{ data.n3_qualification.nb_manches_interregionales }} / {{ data.n3_qualification.nb_manches_requises }} — <strong>fond ambre</strong> : qualifiés pour la finale N3 ; <strong>fond vert</strong> : manche (ou finale) comptée dans le total. Barème : {{ data.n3_qualification.legende }}.
+            </p>
+        {% endif %}
+        {% for emb in data.embarcationsOrdre %}
+            {% set rows = data.parEmbarcation[emb] ?? [] %}
+            {% if rows|length > 0 %}
+                <h3 class="embarcation-title">{{ emb }}</h3>
+                {% set hasFinale = nbFinales > 0 %}
+                <table class="table-classement-general">
+                    <thead>
+                        <tr>
+                            <th>Rang</th>
+                            <th>Code bateau</th>
+                            <th>Bateau</th>
+                            <th class="col-cat">Cat</th>
+                            <th>Club</th>
+                            {% for slot in data.slotsManches %}
+                                <th class="r">{{ slot.label }}</th>
+                            {% endfor %}
+                            {% if hasFinale %}
+                                <th class="r finale-col">Finale</th>
+                            {% endif %}
+                            <th class="r points">Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in rows %}
+                            {% set hl = row.highlight_slot_keys|default([]) %}
+                            <tr class="{{ row.Qualifie_finale_n3|default(false) ? 'row-n3-qualifie' : '' }}">
+                                <td>{{ row.Rang }}</td>
+                                <td>{{ row.Code_bateau|e }}</td>
+                                <td>{{ row.Bateau|e }}</td>
+                                {% set catAge = row.Categorie_age|default((row.details[0].Code_categorie|default('—'))) %}
+                                {% set rangCatAge = row.Rang_categorie_age|default(null) %}
+                                <td class="col-cat">{{ (rangCatAge is not null and catAge != '—') ? (rangCatAge ~ '/' ~ catAge) : catAge|e }}</td>
+                                <td>{{ row.Club|e }}</td>
+                                {% for slot in data.slotsManches %}
+                                    {% set slotPts = row.Points_par_slot[slot.key]|default(null) %}
+                                    <td class="r{{ slot.key in hl ? ' slot-best' : '' }}">{{ slotPts is not null ? slotPts|number_format(2, ',', ' ') : '—' }}</td>
+                                {% endfor %}
+                                {% if hasFinale %}
+                                    {% set finalePts = row.Points_finale|default(0) %}
+                                    <td class="r{{ row.highlight_finale|default(false) ? ' slot-best' : '' }}">{{ finalePts > 0 ? finalePts|number_format(2, ',', ' ') : '—' }}</td>
+                                {% endif %}
+                                <td class="r points">{{ row.Points_total|number_format(2, ',', ' ') }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% endif %}
+        {% endfor %}
+
+        <div class="card">
+            <h2>Détail des manches</h2>
+            {% for nomComp, lines in data.detailManches %}
+                <h4 class="manche-title">{{ nomComp }}</h4>
+                <table class="table-manche">
+                    <thead>
+                        <tr><th>Bateau</th><th>Club</th><th>Course</th><th>Catégorie</th><th>Place</th><th class="r">Points</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for l in lines %}
+                            <tr>
+                                <td>{{ l.Bateau|e }}</td>
+                                <td>{{ l.Club|e }}</td>
+                                <td>{{ l.Code_course ?? '—' }}</td>
+                                <td>{{ l.Code_categorie|e }}</td>
+                                <td>{{ l.Place }}</td>
+                                <td class="r">{{ l.Points|number_format(2, ',', ' ') }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% endfor %}
+        </div>
+    {% endif %}
+{% endblock %}

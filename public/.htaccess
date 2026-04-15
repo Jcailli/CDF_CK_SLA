@@ -1,0 +1,36 @@
+# Use the front controller as index file.
+DirectoryIndex index.php
+
+# By default, Apache does not evaluate symbolic links if you did not enable this
+# feature in your server configuration. Uncomment the following line if you
+# install assets as symlinks or if you experience problems related to symlinks.
+# Options +FollowSymlinks
+
+# Disable MultiViews prevents Apache from matching requests to the first
+# available file (e.g. index.php). See the official Apache documentation for
+# more details.
+<IfModule mod_negotiation.c>
+    Options -MultiViews
+</IfModule>
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Determine the RewriteBase automatically and set it as environment variable.
+    RewriteCond %{REQUEST_URI}::$0 ^(/.+)/(.*)::\2$
+    RewriteRule .* - [E=BASE:%1]
+
+    # Sets the HTTP_AUTHORIZATION header removed by Apache
+    RewriteCond %{HTTP:Authorization} .+
+    RewriteRule ^ - [E=HTTP_AUTHORIZATION:%0]
+
+    # Redirect to the URI without front controller (prevent duplicate content)
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteRule ^ %{ENV:BASE}/index.php [L]
+</IfModule>
+
+<IfModule !mod_rewrite.c>
+    <IfModule mod_alias.c>
+        RedirectMatch 307 ^/$ %{ENV:BASE}/index.php
+    </IfModule>
+</IfModule>

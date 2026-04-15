@@ -1,0 +1,29 @@
+app_classement:
+    path: /
+    controller: App\Controller\ClassementController::index
+    methods: [GET]
+
+app_classement_debug:
+    path: /classement/debug
+    controller: App\Controller\DebugClassementController::index
+    methods: [GET]
+
+app_classement_debug_csv_course1:
+    path: /classement/debug/csv/course1
+    controller: App\Controller\DebugClassementController::exportCsvCourse1
+    methods: [GET]
+
+app_classement_debug_csv_course1_manche:
+    path: /classement/debug/csv/course1-manche
+    controller: App\Controller\DebugClassementController::exportCsvCourse1Manche
+    methods: [GET]
+
+app_classement_debug_csv_course1_n1:
+    path: /classement/debug/csv/course1-n1
+    controller: App\Controller\DebugClassementController::exportCsvCourse1N1
+    methods: [GET]
+
+app_classement_export_pdf_categorie:
+    path: /classement/export/pdf/{categorie}
+    controller: App\Controller\ClassementController::exportPdfCategorie
+    methods: [GET]

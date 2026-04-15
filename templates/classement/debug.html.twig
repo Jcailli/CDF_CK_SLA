@@ -1,0 +1,167 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Debug – Coupe {{ circuit }} {{ annee }}{% endblock %}
+
+{% block body %}
+    <h1>Détail de calcul (debug) – Coupe {{ circuit }}</h1>
+    <p class="sub">
+        <a href="{{ path('app_classement', { circuit: circuit, annee: annee }) }}">← Retour au classement</a>
+    </p>
+
+    <form method="get" action="{{ path('app_classement_debug') }}">
+        <input type="hidden" name="annee" value="{{ annee }}">
+        <input type="hidden" name="circuit" value="{{ circuit }}">
+        <label for="circuit">Circuit :</label>
+        <select name="circuit" id="circuit">
+            {% for c in circuits %}
+                <option value="{{ c }}" {{ circuit == c ? 'selected' : '' }}>{{ c }}</option>
+            {% endfor %}
+        </select>
+        <label for="annee">Saison :</label>
+        <select name="annee" id="annee">
+            {% set yMax = date()|date('Y') + 1 %}
+            {% for y in range(yMax, 2020, -1) %}
+                <option value="{{ y }}" {{ annee == y ? 'selected' : '' }}>{{ y }}</option>
+            {% endfor %}
+        </select>
+        <label for="comp">Compétition :</label>
+        <select name="comp" id="comp">
+            <option value="">— Choisir —</option>
+            {% for c in data.competitions %}
+                <option value="{{ c.Code }}" {{ debug_comp == c.Code ? 'selected' : '' }}>
+                    {{ c.Nom|e }} ({{ c.Date_debut }})
+                </option>
+            {% endfor %}
+        </select>
+        <button type="submit">Afficher le détail</button>
+    </form>
+
+    {% if debug_comp > 0 and debug_comp_nom %}
+        <div class="card" style="border: 1px solid var(--accent);">
+            <h2>Debug : {{ debug_comp_nom|e }}</h2>
+            <p class="muted">Code compétition = {{ debug_comp }} — {{ debug_comp_finale ? 'Finale' : 'Manche' }}</p>
+            <p class="export-buttons">
+                <a href="{{ path('app_classement_debug_csv_course1', { comp: debug_comp, annee: annee, circuit: circuit }) }}" class="btn btn-sm" download>Export CSV – Course 1</a>
+                <a href="{{ path('app_classement_debug_csv_course1_manche', { comp: debug_comp, annee: annee, circuit: circuit }) }}" class="btn btn-sm" download>Export CSV – Course 1 (manche)</a>
+                <a href="{{ path('app_classement_debug_csv_course1_n1', { comp: debug_comp, annee: annee, circuit: circuit }) }}" class="btn btn-sm" download>Export CSV – Course 1 (style N1)</a>
+            </p>
+
+            <div class="tabs-header" role="tablist">
+                <button type="button" class="tab-btn active" data-panel="debug-panel-phases">1. Phases</button>
+                <button type="button" class="tab-btn" data-panel="debug-panel-raw">2. Données brutes</button>
+                <button type="button" class="tab-btn" data-panel="debug-panel-calcul">3. Résultat du calcul</button>
+            </div>
+
+            <div class="tab-panel active" id="debug-panel-phases" role="tabpanel">
+                <p class="muted">Competition_Course_Phase : Libelle en base et type reconnu (FA, FB, F, DF, Q2 ou —).</p>
+                <table class="table-manche">
+                    <thead>
+                        <tr>
+                            <th>Code_course</th>
+                            <th>Code_phase</th>
+                            <th>Libelle</th>
+                            <th>Type détecté</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for p in debug_phases_list %}
+                            <tr>
+                                <td>{{ p.Code_course }}</td>
+                                <td>{{ p.Code_phase }}</td>
+                                <td>{{ p.Libelle|e }}</td>
+                                <td>{{ p.Type_detecte|e }}</td>
+                            </tr>
+                        {% else %}
+                            <tr><td colspan="4" class="muted">Aucune phase pour cette compétition.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="tab-panel" id="debug-panel-raw" role="tabpanel">
+                <p class="muted">Resultat_Course (extrait).</p>
+                <table class="table-manche">
+                    <thead>
+                        <tr>
+                            <th>Code_course</th>
+                            <th>Code_phase</th>
+                            <th>Code_bateau</th>
+                            <th>Code_categorie</th>
+                            <th class="r">Clt</th>
+                            <th class="r">Cltc</th>
+                            <th class="r">Rang</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for r in debug_raw.resultat_course ?? [] %}
+                            <tr>
+                                <td>{{ r.Code_course ?? '' }}</td>
+                                <td>{{ r.Code_phase ?? '' }}</td>
+                                <td>{{ r.Code_bateau|e }}</td>
+                                <td>{{ r.Code_categorie|e }}</td>
+                                <td class="r">{{ r.Clt ?? '' }}</td>
+                                <td class="r">{{ r.Cltc ?? '' }}</td>
+                                <td class="r">{{ r.Rang ?? '' }}</td>
+                            </tr>
+                        {% else %}
+                            <tr><td colspan="7" class="muted">Aucune ligne.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="tab-panel" id="debug-panel-calcul" role="tabpanel">
+                <p class="muted">Résultat de getResultatsCompetition() : place et points par (bateau, course).</p>
+                <table class="table-manche">
+                    <thead>
+                        <tr>
+                            <th>Bateau</th>
+                            <th>Club</th>
+                            <th>Catégorie</th>
+                            <th>Course</th>
+                            <th>Place</th>
+                            <th class="r">Points</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for r in debug_calcul %}
+                            <tr>
+                                <td>{{ r.Bateau|e }}</td>
+                                <td>{{ r.Club|e }}</td>
+                                <td>{{ r.Code_categorie|e }}</td>
+                                <td>{{ r.Code_course ?? '—' }}</td>
+                                <td>{{ r.Clt }}</td>
+                                <td class="r points">{{ r.Points|number_format(1, ',', ' ') }}</td>
+                            </tr>
+                        {% else %}
+                            <tr><td colspan="6" class="muted">Aucun résultat calculé.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    {% endif %}
+
+    {% if data.erreur %}
+        <p class="erreur">{{ data.erreur }}</p>
+    {% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function() {
+    var headers = document.querySelectorAll('.tab-btn');
+    var panels = document.querySelectorAll('.tab-panel');
+    headers.forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var panelId = btn.getAttribute('data-panel');
+            headers.forEach(function(b) { b.classList.remove('active'); });
+            panels.forEach(function(p) {
+                p.classList.toggle('active', p.id === panelId);
+            });
+            btn.classList.add('active');
+        });
+    });
+})();
+</script>
+{% endblock %}

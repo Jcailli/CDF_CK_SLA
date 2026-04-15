@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Classement {{ circuit }} {{ categorie }} {{ annee }}</title>
+    <style>
+        @page { margin: 12mm 10mm; }
+        body {
+            font-family: DejaVu Sans, sans-serif;
+            font-size: {{ pdf_font_size|default(7)|number_format(2, '.', '') }}px;
+            color: #222;
+            margin: 0;
+        }
+        h1 { margin: 0 0 5px 0; font-size: {{ (pdf_font_size|default(7) + 3)|number_format(2, '.', '') }}px; white-space: nowrap; }
+        .meta { margin: 0 0 8px 0; color: #666; font-size: {{ pdf_font_size|default(7)|number_format(2, '.', '') }}px; white-space: nowrap; }
+        /* Largeurs naturelles par colonne, pas de renvoi à la ligne dans les cellules */
+        table {
+            width: auto;
+            max-width: none;
+            border-collapse: collapse;
+            table-layout: auto;
+        }
+        th, td {
+            border: 1px solid #bbb;
+            padding: {{ pdf_cell_padding_v|default(2) }}px {{ pdf_cell_padding_h|default(4) }}px;
+            white-space: nowrap;
+            vertical-align: middle;
+        }
+        th { background: #f1f1f1; font-weight: 700; text-align: left; }
+        td.r, th.r { text-align: right; }
+        .col-cat { min-width: 46px; }
+        /* Manches retenues pour le total (4 meilleures N2/N3, 6 meilleures N1) */
+        td.slot-best {
+            background: #14532d !important;
+            color: #ecfdf5 !important;
+            font-weight: 700;
+        }
+        /* Qualifiés finale N3 : ambre (le vert reste réservé aux manches retenues) */
+        tr.row-n3-qualifie td { background: #fef3c7; }
+        tr.row-n3-qualifie td.slot-best {
+            background: #14532d !important;
+            color: #ecfdf5 !important;
+            border: 1px solid #f59e0b;
+        }
+        /* Colonnes courtes : contenu serré */
+        th:first-child, td:first-child { padding-left: 4px; padding-right: 4px; }
+    </style>
+</head>
+<body>
+    <h1>Classement Coupe de France {{ circuit }} - {{ categorie }}</h1>
+    <p class="meta">Saison {{ annee }}{% if circuit == 'N3' and data.n3_qualification.active|default(false) %} — Manches interrégionales {{ data.n3_qualification.nb_manches_interregionales }}/{{ data.n3_qualification.nb_manches_requises }}. Fond ambre : qualifiés finale N3 ; fond vert : manche comptée dans le total.{% endif %}</p>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Rang</th>
+                <th>Bateau</th>
+                <th class="col-cat">Cat</th>
+                <th>Club</th>
+                {% for slot in data.slotsManches %}
+                    <th class="r">{{ slot.label }}</th>
+                {% endfor %}
+                {% set hasFinale = data.competitions|filter(c => c.is_finale)|length > 0 %}
+                {% if hasFinale %}
+                    <th class="r">Finale</th>
+                {% endif %}
+                <th class="r">Total</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in rows %}
+                {% set hl = row.highlight_slot_keys|default([]) %}
+                <tr class="{{ row.Qualifie_finale_n3|default(false) ? 'row-n3-qualifie' : '' }}">
+                    <td>{{ row.Rang }}</td>
+                    <td>{{ row.Bateau|e }}</td>
+                    {% set catAge = row.Categorie_age|default((row.details[0].Code_categorie|default('—'))) %}
+                    {% set rangCatAge = row.Rang_categorie_age|default(null) %}
+                    <td class="col-cat">{{ (rangCatAge is not null and catAge != '—') ? (rangCatAge ~ '/' ~ catAge) : catAge|e }}</td>
+                    <td>{{ row.Club|e }}</td>
+                    {% for slot in data.slotsManches %}
+                        {% set slotPts = row.Points_par_slot[slot.key]|default(null) %}
+                        <td class="r{{ slot.key in hl ? ' slot-best' : '' }}">{{ slotPts is not null ? slotPts|number_format(2, ',', ' ') : '—' }}</td>
+                    {% endfor %}
+                    {% if hasFinale %}
+                        {% set finalePts = row.Points_finale|default(0) %}
+                        <td class="r{{ row.highlight_finale|default(false) ? ' slot-best' : '' }}">{{ finalePts > 0 ? finalePts|number_format(2, ',', ' ') : '—' }}</td>
+                    {% endif %}
+                    <td class="r">{{ row.Points_total|number_format(2, ',', ' ') }}</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>
