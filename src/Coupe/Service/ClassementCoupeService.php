@@ -620,7 +620,7 @@ final class ClassementCoupeService
             $parEmbarcation[$embKey] = $liste;
         }
 
-        $nbManchesN3Inter = $this->countN3InterregionalManches($circuitUpper, $isN2WithMancheDates, $n2CompByDate, $competitions);
+        $nbManchesN3Inter = $this->countN3InterregionalManches($circuitUpper, $isN2WithMancheDates, $n2CompByDate, $competitions, $slotsManches);
         $n3QualificationActive = $isN3
             && !$hasFinaleCompetition
             && $nbManchesN3Inter >= self::N3_NB_MANCHES;
@@ -679,16 +679,16 @@ final class ClassementCoupeService
     }
 
     /**
-     * Nombre de manches interrégionales N3 (étapes MCFN3) pour le jalon « 6 manches ».
+     * Nombre de manches interrégionales N3 (jalon « 6 manches »).
      *
-     * En agrégation par date (P1/P2), on compte d’ordinaire les journées distinctes ; si plusieurs manches
-     * partagent la même date, le nombre de compétitions MCFN3 hors finale peut être plus élevé — on retient
-     * le **max** des deux pour coller au ressenti métier (« 6 manches » = 6 compétitions ou 6 dates).
+     * En mode agrégé N3 (P1/P2), le jalon métier demandé est exprimé en phases/résultats :
+     * on compte donc les slots de phase (P1/P2) présents dans le classement.
      *
      * @param array<string, list<int>> $n2CompByDate
      * @param list<array<string, mixed>> $competitions
+     * @param list<array<string, mixed>> $slotsManches
      */
-    private function countN3InterregionalManches(string $circuitUpper, bool $isN2WithMancheDates, array $n2CompByDate, array $competitions): int
+    private function countN3InterregionalManches(string $circuitUpper, bool $isN2WithMancheDates, array $n2CompByDate, array $competitions, array $slotsManches): int
     {
         if ($circuitUpper !== 'N3') {
             return 0;
@@ -703,7 +703,17 @@ final class ClassementCoupeService
             }
         }
         if ($isN2WithMancheDates && $n2CompByDate !== []) {
-            return max(count($n2CompByDate), $nbCompetitionsMcfn3);
+            $phaseCount = 0;
+            foreach ($slotsManches as $slot) {
+                if (isset($slot['n2_phase_filter'])) {
+                    ++$phaseCount;
+                }
+            }
+            if ($phaseCount > 0) {
+                return $phaseCount;
+            }
+            // Fallback de sécurité : 2 phases par date.
+            return count($n2CompByDate) * 2;
         }
 
         return $nbCompetitionsMcfn3;
