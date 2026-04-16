@@ -86,7 +86,8 @@ final class ClassementCoupeService
             $c['is_finale'] = match ($circuitUpper) {
                 'N1' => $codeType === 'CHFE' || $codeType === 'CHPE' || str_starts_with($codeType, 'F'),
                 'N2' => str_starts_with($codeType, 'F') && str_ends_with($codeType, 'N2'),
-                'N3' => $codeType === 'FN3' || (str_starts_with($codeType, 'F') && str_ends_with($codeType, 'N3')),
+                // Règlement : la finale Coupe de France N3 est identifiée par FN3.
+                'N3' => $codeType === 'FN3',
                 default => str_starts_with($codeType, 'F'),
             };
         }
