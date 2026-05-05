@@ -32,7 +32,7 @@
     },
     "scripts": {
         "auto-scripts": {
-            "cache:clear": "symfony-cmd"
+            "cache:clear": "@php -r \"if (file_exists('bin/console')) { passthru('php bin/console cache:clear', $exitCode); exit($exitCode); }\""
         },
         "post-install-cmd": ["@auto-scripts"],
         "post-update-cmd": ["@auto-scripts"]
