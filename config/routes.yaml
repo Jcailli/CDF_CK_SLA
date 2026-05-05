@@ -27,3 +27,15 @@ app_classement_export_pdf_categorie:
     path: /classement/export/pdf/{categorie}
     controller: App\Controller\ClassementController::exportPdfCategorie
     methods: [GET]
+
+app_classement_export_csv_categorie:
+    path: /classement/export/csv/{categorie}
+    controller: App\Controller\ClassementController::exportCsvCategorie
+    methods: [GET]
+    requirements:
+        categorie: K1D|K1H|C1D|C1H
+
+app_classement_export_csv_n3_finalistes:
+    path: /classement/export/csv/n3-finalistes
+    controller: App\Controller\ClassementController::exportCsvN3Finalistes
+    methods: [GET]
